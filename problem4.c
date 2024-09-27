@@ -11,21 +11,22 @@ int main(int argc, char *argv[])
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     long long elementsPerProcess = (100 * 100 * 100) / numprocs;
-    long long *localA = malloc(sizeof(long long) * elementsPerProcess);
-    long long *localB = malloc(sizeof(long long) * elementsPerProcess);
-    long long localSum = 0;
-    long long globalSum = 0;
+    int *localA = malloc(sizeof(int) * elementsPerProcess);
+    int *localB = malloc(sizeof(int) * elementsPerProcess);
+    int *localC = malloc(sizeof(int) * elementsPerProcess);
     double startTime, endTime;
 
     srand(time(NULL) + rank);
 
-    long long(*a)[100][100] = NULL;
-    long long(*b)[100][100] = NULL;
+    int(*a)[100][100] = NULL;
+    int(*b)[100][100] = NULL;
+    int(*c)[100][100] = NULL;
 
     if (rank == 0)
     {
-        a = malloc(sizeof(long long[100][100][100]));
-        b = malloc(sizeof(long long[100][100][100]));
+        a = malloc(sizeof(int[100][100][100]));
+        b = malloc(sizeof(int[100][100][100]));
+        c = malloc(sizeof(int[100][100][100]));
 
         for (int i = 0; i < 100; i++)
         {
@@ -33,8 +34,8 @@ int main(int argc, char *argv[])
             {
                 for (int k = 0; k < 100; k++)
                 {
-                    a[i][j][k] = rand() % 42;
-                    b[i][j][k] = rand() % 254;
+                    a[i][j][k] = rand() % 100;
+                    b[i][j][k] = rand() % 100;
                 }
             }
         }
@@ -43,27 +44,29 @@ int main(int argc, char *argv[])
     // record time taken to add all the elements in the arrays
     startTime = MPI_Wtime();
 
-    MPI_Scatter(a, elementsPerProcess, MPI_LONG_LONG_INT, localA, elementsPerProcess, MPI_LONG_LONG_INT, 0, MPI_COMM_WORLD);
-    MPI_Scatter(b, elementsPerProcess, MPI_LONG_LONG_INT, localB, elementsPerProcess, MPI_LONG_LONG_INT, 0, MPI_COMM_WORLD);
+    MPI_Scatter(a, elementsPerProcess, MPI_INT, localA, elementsPerProcess, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Scatter(b, elementsPerProcess, MPI_INT, localB, elementsPerProcess, MPI_INT, 0, MPI_COMM_WORLD);
 
     for (int i = 0; i < elementsPerProcess; i++)
     {
-        localSum += localA[i] + localB[i];
+        localC[i] = localA[i] + localB[i];
     }
 
-    MPI_Reduce(&localSum, &globalSum, 1, MPI_LONG_LONG_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Gather(localC, elementsPerProcess, MPI_INT, c, elementsPerProcess, MPI_INT, 0, MPI_COMM_WORLD);
 
     if (rank == 0)
     {
         endTime = MPI_Wtime();
         printf("It took %f seconds\n", endTime - startTime);
-        printf("with %d processes\n", numprocs);
+        printf("with %`d processes\n", numprocs);
         free(a);
         free(b);
+        free(c);
     }
 
     free(localA);
     free(localB);
+    free(localC);
 
     MPI_Finalize();
     return 0;
